@@ -4,7 +4,7 @@ import fileinput
 import requests
 import re
 
-API_TOKEN = "[lol token goes here]"
+API_TOKEN = "AIzaSyDxH5u1yT_nh9vOHdAE5Ib6cG1oHIIQUcE"
 URL_REGEX = re.compile(r"https://www\.youtube\.com/"
                        r"((c/(?P<customURL>[a-zA-Z0-9-_]+))|"
                        r"(channel/(?P<channelID>[a-zA-Z0-9-_]+))|"
