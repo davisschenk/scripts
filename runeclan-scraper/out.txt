@@ -1,0 +1,2 @@
+UserInfo { name: Some("w4"), xp: Some(343706095), date: Some("31 Oct 15"), previous_names: None }
+UserInfo { name: Some("Nom"), xp: Some(1221535179), date: Some("13 Sep 16"), previous_names: None }
