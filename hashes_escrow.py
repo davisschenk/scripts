@@ -25,7 +25,7 @@ if __name__ == "__main__":
             r = requests.get(URL)
             r.raise_for_status()
             for escrow in r.json():
-                total_bounty = float(escrow['maxCracksNeeded']) * float(escrow['pricePerHashUsd']) 
+                total_bounty = float(escrow['maxCracksNeeded']) * float(escrow['pricePerHashUsd'])
                 created_at = datetime.fromisoformat(escrow["createdAt"])
                 created_at = created_at.replace(tzinfo=TIMEZONE)
                 if created_at > last_time and total_bounty >= MIN_BOUNTY:
@@ -47,6 +47,11 @@ if __name__ == "__main__":
                                         "name": "Total Hashes",
                                         "value": str(escrow["totalHashes"]),
                                         "inline": True,
+                                    },
+                                    {
+                                        "name": "Price Per Hash (BTC)",
+                                        "value": str(escrow["pricePerHash"]),
+                                        "inline": False,
                                     },
                                     {
                                         "name": "Price Per Hash (USD)",
