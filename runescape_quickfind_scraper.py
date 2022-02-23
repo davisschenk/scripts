@@ -10,7 +10,7 @@ def get_posts(category, page):
     URL = f"{category.strip()},goto,{page}"
     print(URL, file=sys.stderr)
 
-    
+
     r = requests.get(URL, timeout=10)
     r.raise_for_status()
 
