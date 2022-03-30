@@ -7,16 +7,18 @@ from typing import List
 from collections import deque
 from abc import ABC, abstractmethod
 
+
 class Process:
-    """ 
+    """
     A class representing a process
     """
+
     def __init__(self, pid, arrival, burst, priority):
         self.pid = pid
         self.arrival = arrival
         self.burst = burst
         self.priority = priority
-        
+
         self.waiting_time = 0
         self.turnaround_time = 0
 
@@ -29,8 +31,10 @@ class Process:
     def __repr__(self):
         return f"Process({self.pid}, {self.arrival}, {self.burst}, {self.priority})"
 
+
 class Processes(list):
     """A container that holds processes"""
+
     @classmethod
     def from_csv(cls, csv):
         """Generate a list of processes from a pandas dataframe"""
@@ -45,17 +49,19 @@ class Processes(list):
     def average_turnaround_time(self):
         """Calculate average turnaround time"""
         return sum(p.turnaround_time for p in self) / len(self)
-    
+
     def print(self, name):
         print(f" {name} ".center(40, "-"))
         print("Process ID | Waiting Time | Turnaround Time")
         for process in sorted(self, key=lambda p: p.pid):
-            print(f"{process.pid:^11}|{process.waiting_time:^14}|{process.turnaround_time:^16}")
-
+            print(
+                f"{process.pid:^11}|{process.waiting_time:^14}|{process.turnaround_time:^16}"
+            )
 
 
 class GanttChartInfo:
     """Stores a data entry for the gantt chart"""
+
     def __init__(self, job, start, stop):
         self.job = job
         self.start = start
@@ -64,22 +70,29 @@ class GanttChartInfo:
     def __repr__(self):
         return f"[{self.start:^6}]--{self.job:^6}--[{self.stop:^6}]"
 
+
 class GanttChart:
     """A gantt chart that allows adding data and printing it out"""
+
     def __init__(self):
         self.data = []
 
     def add(self, job, start, stop):
         self.data.append(GanttChartInfo(job, start, stop))
-    
+
     def __repr__(self):
         return f"{self.data}"
 
     def fill_empty(self):
         for index in range(1, len(self.data)):
-            if self.data[index-1].stop != self.data[index].start:
-                self.data.insert(index, GanttChartInfo("IDLE", self.data[index-1].stop, self.data[index].start))
-    
+            if self.data[index - 1].stop != self.data[index].start:
+                self.data.insert(
+                    index,
+                    GanttChartInfo(
+                        "IDLE", self.data[index - 1].stop, self.data[index].start
+                    ),
+                )
+
     def print(self):
         self.fill_empty()
 
@@ -87,8 +100,10 @@ class GanttChart:
         for row in self.data:
             print(f"{row}")
 
+
 class Scheduler(ABC):
     """Base class for a scheduler"""
+
     def __init__(self, processes: Processes, quantum):
         self.processes: Processes = processes
         self.quantum = quantum
@@ -105,12 +120,13 @@ class Scheduler(ABC):
         return self.processes.average_waiting_time()
 
     def calculate_throughput(self):
-        return len(self.processes)/self.gantt.data[-1].stop
+        return len(self.processes) / self.gantt.data[-1].stop
 
     def print_stats(self):
         print(f"Average Waiting Time: {self.average_waiting_time()}")
         print(f"Average Turnaround Time: {self.average_turnaround_time()}")
         print(f"Throughput: {self.calculate_throughput()}")
+
 
 class FirstComeFirstServe(Scheduler):
     def __init__(self, processes: List[Process], quantum: int):
@@ -127,14 +143,20 @@ class FirstComeFirstServe(Scheduler):
                 self.finish_time[index] = process.arrival + process.burst
                 self.gantt.add(process.pid, process.arrival, self.finish_time[index])
             else:
-                self.finish_time[index] = self.finish_time[index-1] + process.burst
-                self.gantt.add(process.pid, self.finish_time[index-1], self.finish_time[index])
+                self.finish_time[index] = self.finish_time[index - 1] + process.burst
+                self.gantt.add(
+                    process.pid, self.finish_time[index - 1], self.finish_time[index]
+                )
 
             process.turnaround_time = self.finish_time[index] - process.arrival
-            process.waiting_time = self.finish_time[index] - process.arrival - process.burst
-        
+            process.waiting_time = (
+                self.finish_time[index] - process.arrival - process.burst
+            )
+
+
 class Priority(FirstComeFirstServe):
     """Priority queue reuses FCFS since the only difference is sorting"""
+
     def __init__(self, processes: List[Process], quantum: int):
         super().__init__(processes, quantum)
 
@@ -142,10 +164,11 @@ class Priority(FirstComeFirstServe):
         processes.sort(key=lambda p: (p.arrival, p.priority, p.pid))
         self.finish_time = [-1 for _ in self.processes]
 
+
 class RoundRobin(Scheduler):
     def __init__(self, processes, quantum):
         super().__init__(processes, quantum)
-        
+
         self.processes.sort(key=lambda p: (p.arrival, p.pid))
         self.time = self.processes[0].arrival
         self.remaining_time = {p.pid: p.burst for p in self.processes}
@@ -159,7 +182,7 @@ class RoundRobin(Scheduler):
                 # Reload the queue if its empty and there are unfinished jobs
                 self.queue.append(self.unfinished[0])
                 self.time = self.queue[0].arrival
-            
+
             # Use first process in queue
             process = self.queue[0]
 
@@ -178,7 +201,7 @@ class RoundRobin(Scheduler):
                 self.time += self.quantum
 
                 self.gantt.add(process.pid, old_time, self.time)
-            
+
             # Add all processes that will arrive at this time to the queue and push the head of the queue to the end
             self.queue.extend([p for p in self.processes if self.arriving(p)])
             self.queue.rotate(-1)
@@ -187,29 +210,35 @@ class RoundRobin(Scheduler):
             if self.remaining_time[process.pid] == 0:
                 self.queue.remove(process)
                 self.unfinished.remove(process)
-            
+
             # Calculate turnaround and waiting time
             process.turnaround_time = self.time - process.arrival
             process.waiting_time = self.time - process.arrival - process.burst
 
     def arriving(self, p):
         """Check if a process is arriving now"""
-        return p.arrival <= self.time and p is not self.queue[0] and p not in self.queue and p in self.unfinished
+        return (
+            p.arrival <= self.time
+            and p is not self.queue[0]
+            and p not in self.queue
+            and p in self.unfinished
+        )
 
 
-            
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HW4 CPU Scheduling Algorithims")
-    parser.add_argument("FILE", type=pandas.read_csv, help="CSV containing process info")
+    parser.add_argument(
+        "FILE", type=pandas.read_csv, help="CSV containing process info"
+    )
     parser.add_argument("QUANTUM", help="Time Quantum")
-    
+
     args = parser.parse_args()
-    
+
     processes = Processes.from_csv(args.FILE)
     schedulers = {
         "FCFS": FirstComeFirstServe,
         "PS": Priority,
-        "Round Robin": RoundRobin
+        "Round Robin": RoundRobin,
     }
 
     # Rune each scheduler

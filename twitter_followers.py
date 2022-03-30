@@ -14,7 +14,7 @@ def countdown(seconds, out=sys.stderr):
     print()
 
 
-class Twiiter:
+class Twitter:
     def __init__(self, bearer_token):
         self.bearer_token = bearer_token
 
@@ -59,7 +59,7 @@ def clean(t):
 
 
 def run(args):
-    twitter = Twiiter(args.token)
+    twitter = Twitter(args.token)
 
     for username, user_id in get_id(args, twitter):
         print(f"Getting {username=} {user_id=}")
@@ -95,7 +95,6 @@ def run(args):
 
 
 if __name__ == "__main__":
-    twitter = Twiiter(bearer_token)
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(title="Subcommands")
 
