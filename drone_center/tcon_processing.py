@@ -25,6 +25,7 @@ ANTENNAS = {"gr5": "TPSGR5          NONE"}
 
 @dataclass
 class TconPos:
+    name: str
     x: float
     y: float
     z: float
@@ -79,9 +80,10 @@ class OPUSReport:
 
         positions = {}
         for position in solution.findAll("position"):
-            frame = position.find("ref_frame")
+            frame = position.find("ref_frame").text.replace("(", " ").split()[0]
 
-            positions[frame.text.replace("(", " ").split()[0]] = TconPos(
+            positions[frame] = TconPos(
+                name=frame,
                 x=float(position.find("coordinate", axis="X").text),
                 y=float(position.find("coordinate", axis="Y").text),
                 z=float(position.find("coordinate", axis="X").text),
@@ -309,7 +311,7 @@ def process_subcommand(args):
         if mail is None:
             time.sleep(15)
 
-    print("Found email...")
+    print(f"Found email {opus_request}...")
 
     report = OPUSReport.from_xml(mail)
     report.print_quality()
@@ -325,37 +327,48 @@ def process_subcommand(args):
 
     print(f"Using base {base.name} with {args.model} model", file=sys.stderr)
 
-    if args.model == "NAD83":
-        corrected_position = report.NAD83
-    elif args.model == "ITRF2014":
-        corrected_position = report.ITRF2014
+    models = []
+    if args.model == "BOTH" or args.model == "NAD83":
+        models.append(report.NAD83)
+    if args.model == "BOTH" or args.model == "ITRF2014":
+        models.append(report.ITRF2014)
 
-    corrected_position = LLH.from_tuples(corrected_position.lat, corrected_position.e_lon, corrected_position.ellipsoid_height)
-    corrected_position.longitude -= 360
+    for model in models:
+        corrected_position = LLH.from_tuples(model.lat, model.e_lon, model.ellipsoid_height)
+        corrected_position.longitude -= 360
 
-    latitude_offset = base.latitude - corrected_position.latitude
-    longitude_offset = base.longitude - corrected_position.longitude
-    height_offset = base.height - corrected_position.height
+        latitude_offset = base.latitude - corrected_position.latitude
+        longitude_offset = base.longitude - corrected_position.longitude
+        height_offset = base.height - corrected_position.height
 
-    print(f"Base Station ({base.name}): {base.latitude} {base.longitude} {base.height}", file=sys.stderr)
-    print(f"Corrected Base Station ({base.name}): {corrected_position.latitude} {corrected_position.longitude} {corrected_position.height}", file=sys.stderr)
-    print(f"Correction Offsets: {latitude_offset} {longitude_offset} {height_offset}", file=sys.stderr)
+        print(f"Base Station ({base.name}): {base.latitude} {base.longitude} {base.height}", file=sys.stderr)
+        print(f"Corrected Base Station ({base.name}): {corrected_position.latitude} {corrected_position.longitude} {corrected_position.height}", file=sys.stderr)
+        print(f"Correction Offsets: {latitude_offset:.14f} {longitude_offset:.14f} {height_offset:.14f}", file=sys.stderr)
 
-    for mjf_file in args.mjf:
-        points = list(MjfPoint.from_mjf_file(mjf_file))
-        output_name = f"{mjf_file.split('/')[-1].strip('.mjf')}_output.csv"
+        for mjf_file in args.mjf:
+            points = list(MjfPoint.from_mjf_file(mjf_file))
+            output_name = f"{mjf_file.split('/')[-1].strip('.mjf')}_{model.name}_output.csv"
 
-        with open(output_name, "w") as fp:
-            for point in points:
-                if point == base:
-                    continue
-                assert (base.latitude > corrected_position.latitude) == (point.latitude > point.latitude - latitude_offset)
-                assert (base.longitude > corrected_position.longitude) == (point.longitude > point.longitude - longitude_offset)
-                assert (base.height > corrected_position.height) == (point.height > point.height - height_offset)
+            with open(output_name, "w") as fp:
+                print(f"# Base Station ({base.name}): {base.latitude} {base.longitude} {base.height}", file=fp)
+                print(f"# Corrected Base Station ({base.name}): {corrected_position.latitude} {corrected_position.longitude} {corrected_position.height}", file=fp)
+                print(f"# Correction Offsets: {latitude_offset:.14f} {longitude_offset:.14f} {height_offset:.14f}", file=fp)
+                print(f"# Original points", file=fp)
+                for point in points:
+                    if point == base:
+                        continue
+                    print(f"# {point.name},{point.latitude},{point.longitude},{point.height}", file=fp)
 
-                print(f"{point.name},{point.latitude-latitude_offset},{point.longitude-longitude_offset},{point.height-height_offset}", file=fp)
+                for point in points:
+                    if point == base:
+                        continue
+                    assert (base.latitude > corrected_position.latitude) == (point.latitude > point.latitude - latitude_offset)
+                    assert (base.longitude > corrected_position.longitude) == (point.longitude > point.longitude - longitude_offset)
+                    assert (base.height > corrected_position.height) == (point.height > point.height - height_offset)
 
-        print(f"Wrote corrected values for {mjf_file} to {output_name}", file=sys.stderr)
+                    print(f"{point.name},{point.latitude-latitude_offset},{point.longitude-longitude_offset},{point.height-height_offset}", file=fp)
+
+            print(f"Wrote corrected values for {mjf_file} to {output_name}", file=sys.stderr)
 
 
 if __name__ == "__main__":
@@ -374,7 +387,7 @@ if __name__ == "__main__":
     process_parser.add_argument("--mjf", type=str, required=True, nargs="+", help="Mjf file from Tesla")
     process_parser.add_argument("--ant", type=str, required=True, help="Antenna", choices=ANTENNAS.keys())
     process_parser.add_argument("--hgt", type=float, required=True, help="Slant Height")
-    process_parser.add_argument("--model", type=str, choices=["NAD83", "ITRF2014"], required=True, default="NAD83")
+    process_parser.add_argument("--model", type=str, choices=["NAD83", "ITRF2014", "BOTH"], default="NAD83")
     process_parser.add_argument("--out", type=str, default="")
     process_parser.set_defaults(func=process_subcommand)
 
