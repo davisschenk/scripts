@@ -226,7 +226,7 @@ class RoundRobin(Scheduler):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="HW4 CPU Scheduling Algorithims")
+    parser = argparse.ArgumentParser(description="HW4 CPU Scheduling Algorithms")
     parser.add_argument(
         "FILE", type=pandas.read_csv, help="CSV containing process info"
     )
@@ -241,7 +241,7 @@ if __name__ == "__main__":
         "Round Robin": RoundRobin,
     }
 
-    # Rune each scheduler
+    # Run each scheduler
     for name, scheduler in schedulers.items():
         s = scheduler(processes, int(args.QUANTUM))
         s.run()
