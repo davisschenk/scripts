@@ -42,7 +42,6 @@ class DataDownloader:
         for flight_name, data in self.flights.items():
             print(f"{flight_name}: {data}")
 
-
     def commands(self):
         return {
             "1": self.create_flight,
@@ -174,6 +173,9 @@ class DataDownloader:
             flight["calibrated"] = False
             flight.calibrated.iloc[:10] = flight.capture.iloc[:10].apply(check_calibrated)
             flight.calibrated.iloc[-10:] = flight.capture.iloc[-10:].apply(check_calibrated)
+
+            assert any(flight.calibrated.iloc[-10:])
+            assert any(flight.calibrated.iloc[:10])
 
             cutoff_altitude = df.altitude.mean()-3.0*df.altitude.std()
             flight["valid_altitude"] = flight["altitude"] > cutoff_altitude
