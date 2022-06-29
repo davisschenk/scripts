@@ -8,7 +8,8 @@ from pathlib import Path
 from datetime import datetime
 import plotly.express as px
 
-np.set_printoptions(formatter={'float': '{}'.format})
+np.set_printoptions(formatter={"float": "{}".format})
+
 
 def get_unique_field(df, selector):
     series = df[selector]
@@ -65,7 +66,9 @@ if __name__ == "__main__":
             datas.append(data)
 
     df = pd.DataFrame(datas)
-    df[["latitude", "longitude", "altitude"]] = df.apply(get_position, axis=1).apply(pd.Series)
+    df[["latitude", "longitude", "altitude"]] = df.apply(get_position, axis=1).apply(
+        pd.Series
+    )
     df["date"] = df.apply(get_utc_time, axis=1)
     df.set_index("date", inplace=True)
 
@@ -90,7 +93,7 @@ if __name__ == "__main__":
             df,
             lat=df.latitude,
             lon=df.longitude,
-            color=df[args.param],
+            color=df.query(args.param),
             zoom=14,
             labels=dict(
                 latitude="Latitude",
@@ -101,6 +104,7 @@ if __name__ == "__main__":
             hover_data=["altitude", "SourceFile"],
         )
         fig.update_layout(
+            autosize=True,
             mapbox_style="white-bg",
             mapbox_layers=[
                 {
